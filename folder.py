@@ -1,18 +1,22 @@
 class InnerFolder:
-    def __init__(self, path: str):
+    def __init__(self, path: str, src_folder: str):
         self.__check = False
-        self.__path = path
+        self.__abs_path = path
+        self.__rtv_path = path.replace(src_folder, "")
 
-    def get_path(self) -> str:
-        return self.__path
+    def get_absolute_path(self) -> str:
+        return self.__abs_path
 
     def get_check(self) -> bool:
         return self.__check
 
+    def get_relative_path(self) -> str:
+        return self.__rtv_path
+
     def set_check(self, check):
         self.__check = check
 
-    def compare_folder(self, source_folder: str, folder2: str) -> bool:
-        if self.__path.replace(source_folder, "") == folder2:
+    def compare_relative_path(self, f: str) -> bool:
+        if self.__rtv_path == f:
             return True
         return False

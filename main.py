@@ -24,12 +24,12 @@ def get_folder_content(folder: str, belongs_to_source: bool):
             if item.is_file():
                 src_files.append(str(item))
             else:
-                src_folders.append(InnerFolder(str(item)))
+                src_folders.append(InnerFolder(str(item), source_path))
         else:
             if item.is_file():
                 cpy_files.append(str(item))
             else:
-                cpy_folders.append(InnerFolder(str(item)))
+                cpy_folders.append(InnerFolder(str(item), copy_path))
 
 
 # Checks the existence of the folders and the log file
@@ -46,6 +46,17 @@ def check_existence():
         print("Log file does not exist")
         return False
     return True
+
+
+def check_folders_src_cpy():
+    for f_src in src_folders:
+        for f_cpy in cpy_folders:
+            if f_cpy.get_check():
+                continue
+            if f_cpy.compare_relative_path(f_src.get_relative_path()):
+                f_cpy.set_check(True)
+                f_src.set_check(True)
+                break
 
 
 if __name__ == '__main__':
@@ -66,7 +77,9 @@ if __name__ == '__main__':
 
     get_folder_content(source_path, True)
     get_folder_content(copy_path, False)
+    check_folders_src_cpy()
 
+'''
     while len(src_folders) > 0:
         f = src_folders.pop(0)
         get_folder_content(f.get_path(), True)
@@ -74,3 +87,4 @@ if __name__ == '__main__':
     while len(cpy_folders) > 0:
         f = cpy_folders.pop(0)
         get_folder_content(f.get_path(), False)
+'''
