@@ -1,35 +1,20 @@
 import argparse
 from pathlib import Path
 import sys
-from folder import InnerFolder
+from folder_content import Folder
+import operation
+import time
 
-source_path = None
-copy_path = None
-log_path = None
-sync_time = 0
+src = None
+cpy = None
 
 src_folders = []  # Folders that are inside the source folder
 src_files = []  # Files that are inside the source folder
 cpy_folders = []  # Folders that are inside the replica folder
 cpy_files = []  # Files that are inside the replica folder
 
-
-# Get all items from the given folder
-def get_folder_content(folder: str, belongs_to_source: bool):
-    global src_folders, src_files, cpy_folders, cpy_files
-
-    items = Path(folder).iterdir()
-    for item in items:
-        if belongs_to_source:
-            if item.is_file():
-                src_files.append(str(item))
-            else:
-                src_folders.append(InnerFolder(str(item), source_path))
-        else:
-            if item.is_file():
-                cpy_files.append(str(item))
-            else:
-                cpy_folders.append(InnerFolder(str(item), copy_path))
+timeout = 0
+activity = False
 
 
 # Checks the existence of the folders and the log file
@@ -48,15 +33,53 @@ def check_existence():
     return True
 
 
-def check_folders_src_cpy():
-    for f_src in src_folders:
+def update_copy():
+    global activity, timeout
+    for f_scr in src_folders:
         for f_cpy in cpy_folders:
-            if f_cpy.get_check():
-                continue
-            if f_cpy.compare_relative_path(f_src.get_relative_path()):
+            if not f_cpy.get_check() and f_scr.get_path().name == f_cpy.get_path().name:
                 f_cpy.set_check(True)
-                f_src.set_check(True)
+                f_scr.set_check(True)
                 break
+
+        if not f_scr.get_check():
+            new_path = str(cpy.get_path()) + str(f_scr.get_path()).replace(str(src.get_path()), "")
+            operation.create_folder(Path(new_path))
+            activity = True
+            timeout = 0
+
+    for f_scr in src_files:
+        for f_cpy in cpy_files:
+            if not f_cpy.get_check() and f_scr.get_path().name == f_cpy.get_path().name:
+                if not operation.verify_files_integrity(f_scr.get_path(), f_cpy.get_path()):
+                    operation.copy_item(f_scr.get_path(), f_cpy.get_path(), False)
+                    activity = True
+                    timeout = 0
+                f_cpy.set_check(True)
+                f_scr.set_check(True)
+                break
+
+        if not f_scr.get_check():
+            new_path = str(cpy.get_path()) + str(f_scr.get_path()).replace(str(src.get_path()), "")
+            operation.copy_item(f_scr.get_path(), Path(new_path), True)
+            f_scr.set_check(True)
+            activity = True
+            timeout = 0
+
+
+def remove_old_items():
+    global activity, timeout
+    for f_cpy in cpy_files:
+        if not f_cpy.get_check():
+            operation.remove_item(f_cpy.get_path(), True)
+            activity = True
+            timeout = 0
+
+    for f_cpy in reversed(cpy_folders):
+        if not f_cpy.get_check() :
+            operation.remove_item(f_cpy.get_path(), False)
+            activity = True
+            timeout = 0
 
 
 if __name__ == '__main__':
@@ -75,16 +98,27 @@ if __name__ == '__main__':
     if not check_existence():
         sys.exit(1)
 
-    get_folder_content(source_path, True)
-    get_folder_content(copy_path, False)
-    check_folders_src_cpy()
+    src = Folder(Path(source_path))
+    cpy = Folder(Path(copy_path))
 
-'''
-    while len(src_folders) > 0:
-        f = src_folders.pop(0)
-        get_folder_content(f.get_path(), True)
+    print(f'Synchronizing folders - {src.get_path().name} and {cpy.get_path().name}')
+    print(f'Program will end after {sync_time * 5} seconds of inactivity')
+    while timeout < (sync_time * 5):
+        t = time.strftime("%H:%M:%S")
+        print(f'     At {t}')
+        # Get content
+        src_files, src_folders = src.get_folder_items()
+        cpy_files, cpy_folders = cpy.get_folder_items()
 
-    while len(cpy_folders) > 0:
-        f = cpy_folders.pop(0)
-        get_folder_content(f.get_path(), False)
-'''
+        # Check the existence of the folders and the integrity of the files inside copy folder
+        update_copy()
+
+        # Remove files and folders that no longer exist in source folder
+        remove_old_items()
+        if not activity:
+            print(f'          No activity')
+        activity = False
+        time.sleep(sync_time)
+        timeout += sync_time
+
+    print("End")
