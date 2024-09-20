@@ -25,7 +25,10 @@ def verify_files_integrity(f_src: Path, f_cpy: Path) -> bool:
 # If file in src was modified, then it is copied to cpy
 # If there is a new file in src, then copy it into cpy
 def copy_item(src: Path, cpy: Path):
-    shutil.copy2(src, cpy)
+    try:
+        shutil.copy2(src, cpy)
+    except Exception as e:
+        print(e)
 
 
 # If there is a new folder in src, then create one in cpy
