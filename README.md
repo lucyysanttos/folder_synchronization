@@ -14,3 +14,5 @@ To run the program, it is recommended to have *Python 3.12.6* installed. The fol
 - **sync_time**: Verification cycle time in seconds
 
 If any of the specified folders do not exist, the program notifies the user and exits. During the verification process, log messages are displayed in the console, describing each operation performed. These messages are also saved in the log file.
+
+After **5 minutes** of inacticity, the program exits.
